@@ -38,11 +38,19 @@ export async function addToProject(): Promise<void> {
       .map(l => l.trim())
       .filter(l => l.length > 0) ?? []
   const labelOperator = core.getInput('label-operator').trim().toLocaleLowerCase()
+  const assigned =
+    core
+      .getInput('assigned')
+      .split(',')
+      .map(l => l.trim())
+      .filter(l => l.length > 0) ?? []
+  const assigneeOperator = core.getInput('assignee-operator').trim().toLocaleLowerCase()
 
   const octokit = github.getOctokit(ghToken)
   const urlMatch = projectUrl.match(urlParse)
   const issue = github.context.payload.issue ?? github.context.payload.pull_request
   const issueLabels: string[] = (issue?.labels ?? []).map((l: {name: string}) => l.name)
+  const issueAssignees: string[] = (issue?.assignees ?? []).map((a: {login: string}) => a.login)
 
   // Ensure the issue matches our `labeled` filter based on the label-operator.
   if (labelOperator === 'and') {
@@ -53,6 +61,19 @@ export async function addToProject(): Promise<void> {
   } else {
     if (labeled.length > 0 && !issueLabels.some(l => labeled.includes(l))) {
       core.info(`Skipping issue ${issue?.number} because it does not have one of the labels: ${labeled.join(', ')}`)
+      return
+    }
+  }
+
+  // Ensure the issue matches our `assigned` filter based on the assignee-operator.
+  if (assigneeOperator === 'and') {
+    if (!assigned.every(a => issueAssignees.includes(a))) {
+      core.info(`Skipping issue ${issue?.number} because it doesn't match all the assignees: ${assigned.join(', ')}`)
+      return
+    }
+  } else {
+    if (assigned.length > 0 && !issueAssignees.some(a => assigned.includes(a))) {
+      core.info(`Skipping issue ${issue?.number} because it does not have one of the assignees: ${assigned.join(', ')}`)
       return
     }
   }

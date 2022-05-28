@@ -46,7 +46,7 @@ const github = __importStar(__nccwpck_require__(5438));
 // https://github.com/orgs|users/<ownerName>/projects/<projectNumber>
 const urlParse = /^(?:https:\/\/)?github\.com\/(?<ownerType>orgs|users)\/(?<ownerName>[^/]+)\/projects\/(?<projectNumber>\d+)/;
 function addToProject() {
-    var _a, _b, _c, _d, _e, _f, _g, _h;
+    var _a, _b, _c, _d, _e, _f, _g, _h, _j, _k;
     return __awaiter(this, void 0, void 0, function* () {
         const projectUrl = core.getInput('project-url', { required: true });
         const ghToken = core.getInput('github-token', { required: true });
@@ -56,10 +56,17 @@ function addToProject() {
             .map(l => l.trim())
             .filter(l => l.length > 0)) !== null && _a !== void 0 ? _a : [];
         const labelOperator = core.getInput('label-operator').trim().toLocaleLowerCase();
+        const assigned = (_b = core
+            .getInput('assigned')
+            .split(',')
+            .map(l => l.trim())
+            .filter(l => l.length > 0)) !== null && _b !== void 0 ? _b : [];
+        const assigneeOperator = core.getInput('assignee-operator').trim().toLocaleLowerCase();
         const octokit = github.getOctokit(ghToken);
         const urlMatch = projectUrl.match(urlParse);
-        const issue = (_b = github.context.payload.issue) !== null && _b !== void 0 ? _b : github.context.payload.pull_request;
-        const issueLabels = ((_c = issue === null || issue === void 0 ? void 0 : issue.labels) !== null && _c !== void 0 ? _c : []).map((l) => l.name);
+        const issue = (_c = github.context.payload.issue) !== null && _c !== void 0 ? _c : github.context.payload.pull_request;
+        const issueLabels = ((_d = issue === null || issue === void 0 ? void 0 : issue.labels) !== null && _d !== void 0 ? _d : []).map((l) => l.name);
+        const issueAssignees = ((_e = issue === null || issue === void 0 ? void 0 : issue.assignees) !== null && _e !== void 0 ? _e : []).map((a) => a.login);
         // Ensure the issue matches our `labeled` filter based on the label-operator.
         if (labelOperator === 'and') {
             if (!labeled.every(l => issueLabels.includes(l))) {
@@ -73,13 +80,26 @@ function addToProject() {
                 return;
             }
         }
+        // Ensure the issue matches our `assigned` filter based on the assignee-operator.
+        if (assigneeOperator === 'and') {
+            if (!assigned.every(a => issueAssignees.includes(a))) {
+                core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it doesn't match all the assignees: ${assigned.join(', ')}`);
+                return;
+            }
+        }
+        else {
+            if (assigned.length > 0 && !issueAssignees.some(a => assigned.includes(a))) {
+                core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it does not have one of the assignees: ${assigned.join(', ')}`);
+                return;
+            }
+        }
         core.debug(`Project URL: ${projectUrl}`);
         if (!urlMatch) {
             throw new Error(`Invalid project URL: ${projectUrl}. Project URL should match the format https://github.com/<orgs-or-users>/<ownerName>/projects/<projectNumber>`);
         }
-        const ownerName = (_d = urlMatch.groups) === null || _d === void 0 ? void 0 : _d.ownerName;
-        const projectNumber = parseInt((_f = (_e = urlMatch.groups) === null || _e === void 0 ? void 0 : _e.projectNumber) !== null && _f !== void 0 ? _f : '', 10);
-        const ownerType = (_g = urlMatch.groups) === null || _g === void 0 ? void 0 : _g.ownerType;
+        const ownerName = (_f = urlMatch.groups) === null || _f === void 0 ? void 0 : _f.ownerName;
+        const projectNumber = parseInt((_h = (_g = urlMatch.groups) === null || _g === void 0 ? void 0 : _g.projectNumber) !== null && _h !== void 0 ? _h : '', 10);
+        const ownerType = (_j = urlMatch.groups) === null || _j === void 0 ? void 0 : _j.ownerType;
         const ownerTypeQuery = mustGetOwnerTypeQuery(ownerType);
         core.debug(`Org name: ${ownerName}`);
         core.debug(`Project number: ${projectNumber}`);
@@ -95,7 +115,7 @@ function addToProject() {
             ownerName,
             projectNumber
         });
-        const projectId = (_h = idResp[ownerTypeQuery]) === null || _h === void 0 ? void 0 : _h.projectNext.id;
+        const projectId = (_k = idResp[ownerTypeQuery]) === null || _k === void 0 ? void 0 : _k.projectNext.id;
         const contentId = issue === null || issue === void 0 ? void 0 : issue.node_id;
         core.debug(`Project node ID: ${projectId}`);
         core.debug(`Content ID: ${contentId}`);
