@@ -36,14 +36,16 @@ export async function addToProject(): Promise<void> {
       .getInput('labeled')
       .split(',')
       .map(l => l.trim())
-      .filter(l => l.length > 0) ?? []
+      .filter(l => l.length > 0)
+      .map(l => new RegExp(l)) ?? []
   const labelOperator = core.getInput('label-operator').trim().toLocaleLowerCase()
   const assigned =
     core
       .getInput('assigned')
       .split(',')
       .map(l => l.trim())
-      .filter(l => l.length > 0) ?? []
+      .filter(l => l.length > 0)
+      .map(l => new RegExp(l)) ?? []
   const assigneeOperator = core.getInput('assignee-operator').trim().toLocaleLowerCase()
 
   const octokit = github.getOctokit(ghToken)
@@ -54,12 +56,12 @@ export async function addToProject(): Promise<void> {
 
   // Ensure the issue matches our `labeled` filter based on the label-operator.
   if (labelOperator === 'and') {
-    if (!labeled.every(l => issueLabels.includes(l))) {
+    if (!labeled.every(lr => issueLabels.some(il => lr.test(il)))) {
       core.info(`Skipping issue ${issue?.number} because it doesn't match all the labels: ${labeled.join(', ')}`)
       return
     }
   } else {
-    if (labeled.length > 0 && !issueLabels.some(l => labeled.includes(l))) {
+    if (labeled.length > 0 && !issueLabels.some(il => labeled.some(lr => lr.test(il)))) {
       core.info(`Skipping issue ${issue?.number} because it does not have one of the labels: ${labeled.join(', ')}`)
       return
     }
@@ -67,12 +69,12 @@ export async function addToProject(): Promise<void> {
 
   // Ensure the issue matches our `assigned` filter based on the assignee-operator.
   if (assigneeOperator === 'and') {
-    if (!assigned.every(a => issueAssignees.includes(a))) {
+    if (!assigned.every(ar => issueAssignees.some(ia => ar.test(ia)))) {
       core.info(`Skipping issue ${issue?.number} because it doesn't match all the assignees: ${assigned.join(', ')}`)
       return
     }
   } else {
-    if (assigned.length > 0 && !issueAssignees.some(a => assigned.includes(a))) {
+    if (assigned.length > 0 && !issueAssignees.some(ia => assigned.some(ar => ar.test(ia)))) {
       core.info(`Skipping issue ${issue?.number} because it does not have one of the assignees: ${assigned.join(', ')}`)
       return
     }

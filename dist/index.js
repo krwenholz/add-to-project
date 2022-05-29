@@ -54,13 +54,15 @@ function addToProject() {
             .getInput('labeled')
             .split(',')
             .map(l => l.trim())
-            .filter(l => l.length > 0)) !== null && _a !== void 0 ? _a : [];
+            .filter(l => l.length > 0)
+            .map(l => new RegExp(l))) !== null && _a !== void 0 ? _a : [];
         const labelOperator = core.getInput('label-operator').trim().toLocaleLowerCase();
         const assigned = (_b = core
             .getInput('assigned')
             .split(',')
             .map(l => l.trim())
-            .filter(l => l.length > 0)) !== null && _b !== void 0 ? _b : [];
+            .filter(l => l.length > 0)
+            .map(l => new RegExp(l))) !== null && _b !== void 0 ? _b : [];
         const assigneeOperator = core.getInput('assignee-operator').trim().toLocaleLowerCase();
         const octokit = github.getOctokit(ghToken);
         const urlMatch = projectUrl.match(urlParse);
@@ -69,26 +71,26 @@ function addToProject() {
         const issueAssignees = ((_e = issue === null || issue === void 0 ? void 0 : issue.assignees) !== null && _e !== void 0 ? _e : []).map((a) => a.login);
         // Ensure the issue matches our `labeled` filter based on the label-operator.
         if (labelOperator === 'and') {
-            if (!labeled.every(l => issueLabels.includes(l))) {
+            if (!labeled.every(lr => issueLabels.some(il => lr.test(il)))) {
                 core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it doesn't match all the labels: ${labeled.join(', ')}`);
                 return;
             }
         }
         else {
-            if (labeled.length > 0 && !issueLabels.some(l => labeled.includes(l))) {
+            if (labeled.length > 0 && !issueLabels.some(il => labeled.some(lr => lr.test(il)))) {
                 core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it does not have one of the labels: ${labeled.join(', ')}`);
                 return;
             }
         }
         // Ensure the issue matches our `assigned` filter based on the assignee-operator.
         if (assigneeOperator === 'and') {
-            if (!assigned.every(a => issueAssignees.includes(a))) {
+            if (!assigned.every(ar => issueAssignees.some(ia => ar.test(ia)))) {
                 core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it doesn't match all the assignees: ${assigned.join(', ')}`);
                 return;
             }
         }
         else {
-            if (assigned.length > 0 && !issueAssignees.some(a => assigned.includes(a))) {
+            if (assigned.length > 0 && !issueAssignees.some(ia => assigned.some(ar => ar.test(ia)))) {
                 core.info(`Skipping issue ${issue === null || issue === void 0 ? void 0 : issue.number} because it does not have one of the assignees: ${assigned.join(', ')}`);
                 return;
             }
