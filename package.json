@@ -5,7 +5,9 @@
   "author": "GitHub and contributors",
   "dependencies": {
     "@actions/core": "^1.6.0",
-    "@actions/github": "^5.0.0"
+    "@actions/github": "^5.0.0",
+    "@octokit/auth-app": "^3.6.1",
+    "@octokit/graphql": "^4.8.0"
   },
   "engines": {
     "node": ">=16.0.0 <17.0.0",

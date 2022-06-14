@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+import {App} from 'octokit'
 
 // TODO: Ensure this (and the Octokit client) works for non-github.com URLs, as well.
 // https://github.com/orgs|users/<ownerName>/projects/<projectNumber>
@@ -30,7 +31,9 @@ interface ProjectAddItemResponse {
 
 export async function addToProject(): Promise<void> {
   const projectUrl = core.getInput('project-url', {required: true})
-  const ghToken = core.getInput('github-token', {required: true})
+  const appId = core.getInput('github-app-id', {required: true})
+  const privateKey = core.getInput('github-app-private-key', {required: true})
+  const installationId = +core.getInput('github-app-installation-id', {required: true})
   const labeled =
     core
       .getInput('labeled')
@@ -48,7 +51,7 @@ export async function addToProject(): Promise<void> {
       .map(l => new RegExp(l)) ?? []
   const assigneeOperator = core.getInput('assignee-operator').trim().toLocaleLowerCase()
 
-  const octokit = github.getOctokit(ghToken)
+  const app = await new App({appId, privateKey}).getInstallationOctokit(installationId)
   const urlMatch = projectUrl.match(urlParse)
   const issue = github.context.payload.issue ?? github.context.payload.pull_request
   const issueLabels: string[] = (issue?.labels ?? []).map((l: {name: string}) => l.name)
@@ -98,7 +101,7 @@ export async function addToProject(): Promise<void> {
   core.debug(`Owner type: ${ownerType}`)
 
   // First, use the GraphQL API to request the project's node ID.
-  const idResp = await octokit.graphql<ProjectNodeIDResponse>(
+  const idResp = await app.graphql<ProjectNodeIDResponse>(
     `query getProject($ownerName: String!, $projectNumber: Int!) { 
       ${ownerTypeQuery}(login: $ownerName) {
         projectNext(number: $projectNumber) {
@@ -119,7 +122,7 @@ export async function addToProject(): Promise<void> {
   core.debug(`Content ID: ${contentId}`)
 
   // Next, use the GraphQL API to add the issue to the project.
-  const addResp = await octokit.graphql<ProjectAddItemResponse>(
+  const addResp = await app.graphql<ProjectAddItemResponse>(
     `mutation addIssueToProject($input: AddProjectNextItemInput!) {
       addProjectNextItem(input: $input) {
         projectNextItem {

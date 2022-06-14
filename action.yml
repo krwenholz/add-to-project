@@ -7,9 +7,15 @@ inputs:
   project-url:
     required: true
     description: URL of the project to add issues to
-  github-token:
+  github-app-id:
     required: true
-    description: A GitHub personal access token with write access to the project
+    description: A GitHub app id
+  github-app-private-key:
+    required: true
+    description: A GitHub app private key
+  github-app-installation-id:
+    required: true
+    description: The GitHub app's installation id for the org owning the project
   labeled:
     required: false
     description: A comma-separated list of labels to use as a filter for issue to be added
