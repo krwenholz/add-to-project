@@ -1,17 +1,14 @@
-# actions/add-to-project
+# krwenholz/add-to-project
 
-Use this action to automatically add the current issue or pull request to a GitHub project.
-Note that this is for [GitHub projects
-(beta)](https://docs.github.com/en/issues/trying-out-the-new-projects-experience/about-projects),
-not the original GitHub projects.
+Based off the original by GitHub. This iteration includes changes to
 
-## Current Status
+1. support GitHub Apps as the auth mechanism
+2. support regexes
+3. work off labels _and_ assignees
 
-[![build-test](https://github.com/actions/add-to-project/actions/workflows/test.yml/badge.svg)](https://github.com/actions/add-to-project/actions/workflows/test.yml)
+These changes were primarily made to support planning workflows at ngrok. In supporting #1, we decided not to make this generic with one app for many other orgs, but to use a specific app internal to our org. This may change in the future.
 
-🚨 **This action is in beta, however the API is stable. Some breaking changes might occur between versions, but it is not likely to break as long as you use a specific SHA or version number** 🚨
-
-> **NOTE:** This Action (currently) only supports auto-adding Issues to a Project which lives in the same organization as your target Repository.
+For installation, we recommend pointing at a specific SHA, as this is both beta software.
 
 ## Usage
 
@@ -41,7 +38,9 @@ jobs:
       - uses: actions/add-to-project@main
         with:
           project-url: https://github.com/orgs/<orgName>/projects/<projectNumber>
-          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+          github-app-id: ${{ secrets.APP_ID }}
+          github-app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          github-app-installation-id: ${{ secrets.APP_INSTALLATION_ID }}
           labeled: bug, needs-triage
           label-operator: OR
 ```
@@ -61,7 +60,7 @@ jobs:
     name: Add issue to project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@main
+      - uses: krwenholz/add-to-project@main
         with:
           project-url: https://github.com/orgs/<orgName>/projects/<projectNumber>
           github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
@@ -73,30 +72,19 @@ jobs:
 
 - [Inputs](#inputs)
 - [Supported Events](#supported-events)
-- [How to point the action to a specific branch or commit sha](#how-to-point-the-action-to-a-specific-branch-or-commit-sha)
-- [Creating a PAT and adding it to your repository](#creating-a-pat-and-adding-it-to-your-repository)
+- [Auth](#auth)
 - [Development](#development)
 - [Publish to a distribution branch](#publish-to-a-distribution-branch)
 
 ## Inputs
 
-- <a name="project-url">`project-url`</a> **(required)** is the URL of the GitHub project to add issues to.  
-  _eg: `https://github.com/orgs|users/<ownerName>/projects/<projectNumber>`_
-- <a name="github-token">`github-token`</a> **(required)** is a [personal access
-  token](https://github.com/settings/tokens/new) with the `repo`, `write:org` and
-  `read:org` scopes.  
-  _See [Creating a PAT and adding it to your repository](#creating-a-pat-and-adding-it-to-your-repository) for more details_
-- <a name="labeled">`labeled`</a> **(optional)** is a comma-separated list of labels used to filter applicable issues. When this key is provided, an issue must have _one_ of the labels in the list to be added to the project. Omitting this key means that any issue will be added.
-- <a name="label-operator">`label-operator`</a> **(optional)** is the behavior of the labels filter, either `AND` or `OR` that controls if the issue should be matched with `all` `labeled` input or any of them, default is `OR`.
-- <a name="assigned">`assigned`</a> **(optional)** is a comma-separated list of assignees used to filter applicable issues. When this key is provided, an issue must have _one_ of the assignees in the list to be added to the project. Omitting this key means that any issue will be added.
-- <a name="assignee-operator">`assignee-operator`</a> **(optional)** is the behavior of the assigned filter, either `AND` or `OR` that controls if the issue should be matched with `all` `assigned` input or any of them, default is `OR`.
+See `action.yml`.
 
 ## Supported Events
 
 Currently this action supports the following [`issues` events](https://docs.github.com/en/actions/using-workflows/events-that-trigger-workflows#issues):
 
 - `opened`
-- `transferred`
 - `labeled`
 - `assigned`
 
@@ -108,23 +96,9 @@ and the following [`pull_request` events](https://docs.github.com/en/actions/usi
 
 Using these events ensure that a given issue or pull request, in the workflow's repo, is added to the [specified project](#project-url). If [labeled input(s)](#labeled) are defined, then issues will only be added if they contain at least _one_ of the labels in the list.
 
-## How to point the action to a specific branch or commit sha
+## How to point the action to a commit sha
 
-Pointing to a branch name generally isn't the safest way to refer to an action, but this is how you can use this action now before we've begun creating releases.
-
-```yaml
-jobs:
-  add-to-project:
-    name: Add issue to project
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/add-to-project@main
-        with:
-          project-url: https://github.com/orgs/<orgName>/projects/<projectNumber>
-          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
-```
-
-Another option would be to point to a full [commit SHA](https://docs.github.com/en/get-started/quickstart/github-glossary#commit):
+Recommended: point to a full [commit SHA](https://docs.github.com/en/get-started/quickstart/github-glossary#commit):
 
 ```yaml
 jobs:
@@ -132,21 +106,15 @@ jobs:
     name: Add issue to project
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/add-to-project@<commitSHA>
+      - uses: krwenholz/add-to-project@<commitSHA>
         with:
           project-url: https://github.com/orgs/<orgName>/projects/<projectNumber>
-          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
+          ...
 ```
 
-## Creating a PAT and adding it to your repository
+## Auth
 
-- create a new [personal access
-  token](https://github.com/settings/tokens/new) with `repo`, `write:org` and
-  `read:org` scopes  
-  _See [Creating a personal access token](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/creating-a-personal-access-token) for more information_
-
-- add the newly created PAT as a repository secret, this secret will be referenced by the [github-token input](#github-token)  
-  _See [Encrypted secrets](https://docs.github.com/en/actions/security-guides/encrypted-secrets#creating-encrypted-secrets-for-a-repository) for more information_
+Create a GitHub app and install it in your organization. You'll need to grant permissions to read issues and PRs and write to projects. Then, generate a private key from the app settings page and save this as a secret accessible to your actions. Also add a secret, or hard code, the app id (available on the app's main page) and the installation id (available in the URL on the installation page).
 
 ## Development
 
@@ -155,7 +123,7 @@ Note that this action runs in Node.js 16.x, so we recommend using that version
 of Node (see "engines" in this action's package.json for details).
 
 ```shell
-> git clone https://github.com/actions/add-to-project
+> git clone https://github.com/krwenholz/add-to-project
 > cd add-to-project
 > npm install
 ```
